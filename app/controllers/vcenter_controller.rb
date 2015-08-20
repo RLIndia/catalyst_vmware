@@ -45,15 +45,38 @@ class VcenterController < ApplicationController
 	  arr
   end
 
+  def number_to_human_size(number)
+    number = number.to_f
+    storage_units_fmt = %w(byte kB MB GB TB)
+    base = 1024
+    if number.to_i < base
+      unit = storage_units_fmt[0]
+    else
+      max_exp = storage_units_fmt.size - 1
+      exponent = (Math.log(number) / Math.log(base)).to_i # Convert to base
+      exponent = max_exp if exponent > max_exp # we need this to avoid overflow for the highest unit
+      number /= base**exponent
+      unit = storage_units_fmt[exponent]
+    end
+    format('%0.2f %s', number, unit)
+  end
+
+  def find_datastores
+    connect_to_vcenter
+    dc = connect_to_dc
+    arr = []
+    dc.datastore.each do |store|
+      arr << {:name => store.name, :avail => number_to_human_size(store.summary[:freeSpace]), :cap => number_to_human_size(store.summary[:capacity])}
+    end
+    arr
+  end
+
   def get_hosts
 		hosts = find_pools(connect_to_dc.hostFolder).flatten
 		render json: {hosts: hosts}
   end
 
 	def get_vms
-    puts request.headers.inspect
-    p request.headers['HTTP_VCENTER_IP']
-    p "==================================="
 		vms = traverse_folders_for_vms(connect_to_dc.vmFolder)
 		render json: {vms: vms, count: vms.count}
 	end
@@ -62,6 +85,13 @@ class VcenterController < ApplicationController
     templates = traverse_folders_for_templates(connect_to_dc.vmFolder)
     render json: {templates: templates}
   end
+
+  def list_datastores
+    datastores = find_datastores
+    render json: {datastores: datastores, count: datastores.count}
+  end
+
+
 
   def power_on_vm
    connect_to_vcenter
