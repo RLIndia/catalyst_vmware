@@ -1,0 +1,2 @@
+module VcenterHelper
+end
