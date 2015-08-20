@@ -3,6 +3,19 @@ class VcenterController < ApplicationController
   def index
   end
 
+  def find_vm(folder, vmname)
+    children = folder.children.find_all
+    children.each do |child|
+      if child.class == RbVmomi::VIM::VirtualMachine && child.name == vmname
+      return child
+   elsif child.class == RbVmomi::VIM::Folder
+      vm = find_vm(child, vmname)
+      return vm if vm
+    end
+    end
+    false
+  end
+
   def traverse_folders_for_vms(folder)
   	connect_to_vcenter
     connect_to_dc
@@ -96,8 +109,9 @@ class VcenterController < ApplicationController
   def power_on_vm
    connect_to_vcenter
   dc = connect_to_dc
-    vm = dc.find_vm("#{params["vm"]}") or fail "VM not found"
-    vm.PowerOnVM_Task.wait_for_completion
+ vm = find_vm(dc.vmFolder, params[:vm])
+  render json: {vm: vm}
+   # vm.PowerOnVM_Task.wait_for_completion
   end
 
 	private
