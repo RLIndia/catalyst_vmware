@@ -8,7 +8,8 @@ Rails.application.routes.draw do
    get 'templates' => 'vcenter#get_templates'
    get 'hosts' => 'vcenter#get_hosts'
    get 'datastores' => 'vcenter#list_datastores'
-   get 'poweron/:vm' => 'vcenter#power_on_vm'
+   get ':vm/poweron' => 'vcenter#power_on_vm'
+   get ':vm/poweroff' => 'vcenter#power_off_vm'
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'
 
