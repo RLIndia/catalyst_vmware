@@ -4,12 +4,14 @@ Rails.application.routes.draw do
 
   # You can have the root of your site routed with "root"
    root 'vcenter#index'
+   get 'validate_creds' => 'vcenter#validate_creds'
    get 'vms' => 'vcenter#get_vms'
    get 'templates' => 'vcenter#get_templates'
    get 'hosts' => 'vcenter#get_hosts'
    get 'datastores' => 'vcenter#list_datastores'
    get ':vm/poweron' => 'vcenter#power_on_vm'
    get ':vm/poweroff' => 'vcenter#power_off_vm'
+   post ':template/clone' => 'vcenter#clone_vm'
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'
 
