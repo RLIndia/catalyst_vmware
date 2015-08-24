@@ -16,7 +16,7 @@ class VcenterController < ApplicationController
     begin
       dc = vim.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
       rescue RuntimeError => e
-      render text: "#{e.message}", status: 400
+      render text: "#{e.message}", status: 404
       return
     end
       render text: "Validated", status:200
