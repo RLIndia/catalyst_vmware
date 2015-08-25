@@ -9,6 +9,7 @@ Rails.application.routes.draw do
    get 'templates' => 'vcenter#get_templates'
    get 'hosts' => 'vcenter#get_hosts'
    get 'datastores' => 'vcenter#list_datastores'
+   get 'clusters' => 'vcenter#list_clusters'
    put ':vm/poweron' => 'vcenter#power_on_vm'
    put ':vm/poweroff' => 'vcenter#power_off_vm'
    post ':template/clone' => 'vcenter#clone_vm'

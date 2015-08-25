@@ -50,6 +50,15 @@ class VcenterController < ApplicationController
     end
   end
 
+  def find_clusters(folder)
+    arr = []
+    clusters = find_all_in_folder(folder, RbVmomi::VIM::ClusterComputeResource)
+    clusters.each do |cluster|
+      arr << {:name => cluster.name, :hosts => cluster.host.map(&:name)}
+    end
+    arr
+  end
+
   def find_datastores(dc)
     arr = []
     dc.datastore.each do |store|
@@ -110,7 +119,18 @@ class VcenterController < ApplicationController
     render json: {datastores: datastores, count: datastores.count}
   end
 
-
+  def list_clusters
+    begin
+    dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
+    rescue NoMethodError
+      return
+    rescue RuntimeError => e
+      render json: "#{e.message}", status:404
+      return
+    end
+    clusters = find_clusters(dc.hostFolder)
+    render json: {clusters: clusters, count: clusters.count}
+  end
 
   def power_on_vm
   begin
