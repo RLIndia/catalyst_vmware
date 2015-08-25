@@ -25,7 +25,7 @@ module VcenterHelper
     false
   end
 
-def traverse_folders_for_templates(folder)
+def self.traverse_folders_for_templates(folder)
     retval = []
     children = folder.children.find_all
     children.each do |child|
@@ -38,7 +38,7 @@ def traverse_folders_for_templates(folder)
     retval
 end
 
-def number_to_human_size(number)
+def self.number_to_human_size(number)
     number = number.to_f
     storage_units_fmt = %w(byte kB MB GB TB)
     base = 1024
