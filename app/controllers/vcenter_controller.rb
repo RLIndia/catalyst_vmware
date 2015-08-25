@@ -21,46 +21,9 @@ class VcenterController < ApplicationController
     end
       render text: "Validated", status:200
   end
+ 
 
-  def find_vm(folder, vmname)
-    children = folder.children.find_all
-    children.each do |child|
-    if child.class == RbVmomi::VIM::VirtualMachine && child.name == vmname
-      return child
-    elsif child.class == RbVmomi::VIM::Folder
-      vm = find_vm(child, vmname)
-      return vm if vm
-    end
-    end
-    false
-  end
-
-  def traverse_folders_for_vms(folder)
-    retval = []
-    children = folder.children.find_all
-    children.each do |child|
-      if child.class == RbVmomi::VIM::VirtualMachine 
-        retval << {:name => child.name, :ip => child.guest_ip, :OS => child.guest.props[:guestFullName], :state => child.summary.runtime.powerState, :cpuUsage => child.summary.quickStats.overallCpuUsage, :uptime => child.summary.quickStats.uptimeSeconds} if (!child.config.nil? && child.config.template == false)
-      elsif child.class == RbVmomi::VIM::Folder
-        retval.concat(traverse_folders_for_vms(child))
-      end
-    end
-		retval
-  end
-
-  def traverse_folders_for_templates(folder)
-    retval = []
-    children = folder.children.find_all
-    children.each do |child|
-      if child.class == RbVmomi::VIM::VirtualMachine 
-        retval << child.name if (!child.config.nil? && child.config.template == true)
-      elsif child.class == RbVmomi::VIM::Folder
-        retval.concat(traverse_folders_for_templates(child))
-      end
-    end
-    retval
-  end
-
+  
   def find_pools(folder)
 		arr = []
 		pools = folder.children.find_all.select { |p| p.is_a?(RbVmomi::VIM::ComputeResource) || p.is_a?(RbVmomi::VIM::ResourcePool) }.map(&:host)
@@ -71,21 +34,7 @@ class VcenterController < ApplicationController
 	  arr
   end
 
-  def number_to_human_size(number)
-    number = number.to_f
-    storage_units_fmt = %w(byte kB MB GB TB)
-    base = 1024
-    if number.to_i < base
-      unit = storage_units_fmt[0]
-    else
-      max_exp = storage_units_fmt.size - 1
-      exponent = (Math.log(number) / Math.log(base)).to_i # Convert to base
-      exponent = max_exp if exponent > max_exp # we need this to avoid overflow for the highest unit
-      number /= base**exponent
-      unit = storage_units_fmt[exponent]
-    end
-    format('%0.2f %s', number, unit)
-  end
+  
 
   def find_all_in_folder(folder, type)
     if folder.instance_of?(RbVmomi::VIM::ClusterComputeResource) || folder.instance_of?(RbVmomi::VIM::ComputeResource)
@@ -104,7 +53,7 @@ class VcenterController < ApplicationController
   def find_datastores(dc)
     arr = []
     dc.datastore.each do |store|
-      arr << {:name => store.name, :avail => number_to_human_size(store.summary[:freeSpace]), :cap => number_to_human_size(store.summary[:capacity])}
+      arr << {:name => store.name, :avail => VcenterHelper.number_to_human_size(store.summary[:freeSpace]), :cap => VcenterHelper.number_to_human_size(store.summary[:capacity])}
     end
     arr
   end
@@ -131,7 +80,7 @@ class VcenterController < ApplicationController
       render json: "#{e.message}", status:404
       return
     end
-    vms = traverse_folders_for_vms(dc.vmFolder)
+    vms = VcenterHelper.traverse_folders_for_vms(dc.vmFolder)
 		render json: {vms: vms, count: vms.count}
 	end
 
@@ -144,7 +93,7 @@ class VcenterController < ApplicationController
       render json: "#{e.message}", status:404
       return
     end
-    templates = traverse_folders_for_templates(dc.vmFolder)
+    templates = VcenterHelper.traverse_folders_for_templates(dc.vmFolder)
     render json: {templates: templates, count: templates.count}
   end
 
@@ -164,17 +113,61 @@ class VcenterController < ApplicationController
 
 
   def power_on_vm
-  dc = connect_to_dc
-  vm = find_vm(dc.vmFolder, params[:vm])
+  begin
+    dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
+    rescue NoMethodError
+      return
+    rescue RuntimeError => e
+      render json: "#{e.message}", status:404
+      return
+  end
+  vm = VcenterHelper.find_vm(dc.vmFolder, params[:vm])
+  begin
   vm.PowerOnVM_Task.wait_for_completion
-  render nothing: true
+  rescue NoMethodError 
+    render text: "VM not found", status: 404
+    return
+  end
+  render nothing: true, status:200
   end
 
   def power_off_vm
-  dc = connect_to_dc
-  vm = find_vm(dc.vmFolder, params[:vm])
+  begin
+    dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
+    rescue NoMethodError
+      return
+    rescue RuntimeError => e
+      render json: "#{e.message}", status:404
+      return
+  end
+  vm = VcenterHelper.find_vm(dc.vmFolder, params[:vm])
+  begin
   vm.PowerOffVM_Task.wait_for_completion
-  render nothing: true
+  rescue NoMethodError 
+    render text: "VM not found", status: 404
+    return
+  end
+  render nothing: true, status:200
+  end
+
+  def delete_vm
+    begin
+    dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
+    rescue NoMethodError
+      return
+    rescue RuntimeError => e
+      render json: "#{e.message}", status:404
+      return
+    end
+    begin
+    vm = VcenterHelper.find_vm(dc.vmFolder, params[:vm])
+    vm.PowerOffVM_Task.wait_for_completion unless vm.runtime.powerState == 'poweredOff'
+    rescue NoMethodError 
+      render text: "VM not found", status: 404
+      return
+    end
+    vm.Destroy_Task.wait_for_completion
+    render nothing:true, status:200
   end
 
   def clone_vm
@@ -194,7 +187,7 @@ class VcenterController < ApplicationController
     rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool:rp)
     rspec.datastore = req["datastore"]
     spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, powerOn: false, template: false)
-    vm = find_vm(dc.vmFolder, params[:template])
+    vm = VcenterHelper.find_vm(dc.vmFolder, params[:template])
     p vm
     p vm.parent.class
     vm.CloneVM_Task(:folder => vm.parent, :name => req["vm_name"], :spec => spec).wait_for_completion

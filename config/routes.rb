@@ -9,9 +9,10 @@ Rails.application.routes.draw do
    get 'templates' => 'vcenter#get_templates'
    get 'hosts' => 'vcenter#get_hosts'
    get 'datastores' => 'vcenter#list_datastores'
-   get ':vm/poweron' => 'vcenter#power_on_vm'
-   get ':vm/poweroff' => 'vcenter#power_off_vm'
+   put ':vm/poweron' => 'vcenter#power_on_vm'
+   put ':vm/poweroff' => 'vcenter#power_off_vm'
    post ':template/clone' => 'vcenter#clone_vm'
+   delete ':vm/delete' => 'vcenter#delete_vm'
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'
 
