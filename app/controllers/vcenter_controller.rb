@@ -28,9 +28,12 @@ class VcenterController < ApplicationController
 		arr = []
 		pools = folder.children.find_all.select { |p| p.is_a?(RbVmomi::VIM::ComputeResource) || p.is_a?(RbVmomi::VIM::ResourcePool) }.map(&:host)
 	  pools.each do |pool|
+      pool.each do |host|
 		 # arr << {:name => pool.map(&:name), :memory => pool.map(&:hardware).map(&:memorySize).map(&:bytes)}
-	   arr << pool.map(&:name)
+	   arr << {:name => host.name, :vms => host.vm.map(&:name), :memory => VcenterHelper.number_to_human_size(host.hardware.memorySize), :cpuUsage => host.summary.quickStats.overallCpuUsage, :state => host.summary.runtime.powerState, :cpu_cores => host.hardware.cpuInfo.numCpuCores
+}
    end
+ end
 	  arr
   end
 
