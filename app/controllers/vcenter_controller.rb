@@ -30,7 +30,7 @@ class VcenterController < ApplicationController
 	  pools.each do |pool|
       pool.each do |host|
 		 # arr << {:name => pool.map(&:name), :memory => pool.map(&:hardware).map(&:memorySize).map(&:bytes)}
-	   arr << {:name => host.name, :vms => host.vm.map(&:name), :memory => VcenterHelper.number_to_human_size(host.hardware.memorySize), :cpuUsage => host.summary.quickStats.overallCpuUsage, :state => host.summary.runtime.powerState, :cpu_cores => host.hardware.cpuInfo.numCpuCores
+	   arr << {:name => host.name, :vms => host.vm.map(&:name), :memory => {:avail => VcenterHelper.number_to_human_size(host.summary.hardware.memorySize), :used => VcenterHelper.number_to_human_size(host.summary.quickStats.overallMemoryUsage*1000000)}, :cpu => {:avail => host.summary.hardware.cpuMhz, :used => host.summary.quickStats.overallCpuUsage},:state => host.summary.runtime.powerState, :cpu_cores => host.hardware.cpuInfo.numCpuCores
 }
    end
  end
