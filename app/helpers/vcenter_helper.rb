@@ -4,7 +4,7 @@ module VcenterHelper
     children = folder.children.find_all
     children.each do |child|
       if child.class == RbVmomi::VIM::VirtualMachine 
-        retval << {:name => child.name, :ip => child.guest_ip, :OS => child.guest.props[:guestFullName], :state => child.summary.runtime.powerState, :cpuUsage => child.summary.quickStats.overallCpuUsage, :uptime => child.summary.quickStats.uptimeSeconds} if (!child.config.nil? && child.config.template == false)
+        retval << {:name => child.name, :ip => child.guest_ip, :OS => child.guest.props[:guestFullName], :toolsStatus => child.guest.toolsRunningStatus, :state => child.summary.runtime.powerState, :cpuUsage => {:used => child.summary.quickStats.overallCpuUsage,:num => child.config.hardware.numCPU},:memory => {:avail => child.config.hardware.memoryMB, :used => child.summary.quickStats.guestMemoryUsage}, :uptime => child.summary.quickStats.uptimeSeconds} if (!child.config.nil? && child.config.template == false)
       elsif child.class == RbVmomi::VIM::Folder
         retval.concat(traverse_folders_for_vms(child))
       end
