@@ -54,4 +54,15 @@ def self.number_to_human_size(number)
     format('%0.2f %s', number, unit)
 end
 
+def self.find_datastore(dc,dsName)
+    datastore = nil
+    base_entity = dc.datastore
+    datastore = base_entity.find { |f| f.info.name == dsName }
+    if datastore.nil?
+      raise "Invalid datastore name \"#{datastore_name}\" entered. Re-enter a valid/existing datastore name that is shared to the source VM's host"
+    else
+      datastore
+    end
+  end
+
 end

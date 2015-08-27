@@ -194,26 +194,32 @@ class VcenterController < ApplicationController
   end
 
   def clone_vm
-    connect_to_vcenter
-    dc = connect_to_dc
+    begin
+    dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
+    rescue NoMethodError
+      return
+    rescue RuntimeError => e
+      render json: "#{e.message}", status:404
+      return
+    end
     req = JSON.parse(request.body.read)
     hosts = find_all_in_folder(dc.hostFolder, RbVmomi::VIM::ComputeResource)
     raise "No ComputeResource found" if hosts.empty?
     rp = nil
     hosts.each do |host|
       host.datastore.each do |datastore|
-        if datastore.name == req[:datastore]
+        if datastore.name == req["ds"]
           rp = host.resourcePool
         end
       end
     end
-    rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool:rp)
-    rspec.datastore = req["datastore"]
+    rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: rp)
+    rspec.datastore = VcenterHelper.find_datastore(dc,req["ds"])
     spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, powerOn: false, template: false)
     vm = VcenterHelper.find_vm(dc.vmFolder, params[:template])
-    p vm
-    p vm.parent.class
-    vm.CloneVM_Task(:folder => vm.parent, :name => req["vm_name"], :spec => spec).wait_for_completion
+    req["no_of_vm"].to_i.times do
+    vm.CloneVM_Task(:folder => dc.vmFolder, :name => req["vm_name"]+Time.now.strftime("%F_%H_%M_%S_%L"), :spec => spec)
+    end
     render nothing:true
   end
 
