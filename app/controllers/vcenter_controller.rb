@@ -96,6 +96,19 @@ class VcenterController < ApplicationController
 		render json: {vms: vms, count: vms.count}
 	end
 
+  def vm_info
+     begin
+    dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
+    rescue NoMethodError
+      return
+    rescue RuntimeError => e
+      render json: "#{e.message}", status:404
+      return
+    end
+    vm = VcenterHelper.find_vm(dc.vmFolder, params[:vm])
+    render json: {:name => vm.name, :ip => vm.guest_ip, :OS => vm.guest.props[:guestFullName], :toolsStatus => vm.guest.toolsRunningStatus, :state => vm.summary.runtime.powerState, :cpuUsage => {:used => vm.summary.quickStats.overallCpuUsage,:num => vm.config.hardware.numCPU},:memory => {:avail => vm.config.hardware.memoryMB, :used => vm.summary.quickStats.guestMemoryUsage}, :uptime => vm.summary.quickStats.uptimeSeconds}
+  end
+
   def get_templates
     begin
     dc = connect_to_vcenter.serviceInstance.find_datacenter(params[:dc]) or fail "datacenter not found"
