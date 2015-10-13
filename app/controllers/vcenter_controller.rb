@@ -219,8 +219,8 @@ class VcenterController < ApplicationController
     vm = VcenterHelper.find_vm(dc.vmFolder, params[:template])
     begin 
       req["no_of_vm"].to_i.times do
-      vm.CloneVM_Task(:folder => dc.vmFolder, :name => req["vm_name"]+Time.now.strftime("%F_%H_%M_%S_%L"), :spec => spec)
-      rescue NoMethodError 
+      vm.try(:CloneVM_Task,:folder => dc.vmFolder, :name => req["vm_name"]+Time.now.strftime("%F_%H_%M_%S_%L"), :spec => spec)
+  
       render text: "Template not found", status: 404
       return
       end
