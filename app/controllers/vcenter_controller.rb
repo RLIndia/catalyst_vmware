@@ -230,15 +230,16 @@ class VcenterController < ApplicationController
     rspec.datastore = VcenterHelper.find_datastore(dc,req["ds"])
     spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, powerOn: false, template: false)
     vm = VcenterHelper.find_vm(dc.vmFolder, params[:template])
-    begin 
+    vm_names=[]
       req["no_of_vm"].to_i.times do
-      vm.try(:CloneVM_Task,:folder => dc.vmFolder, :name => req["vm_name"]+Time.now.strftime("%F_%H_%M_%S_%L"), :spec => spec)
-  
-      render text: "Template not found", status: 404
-      return
+      name = req["vm_name"]+"_"+Time.now.strftime("%F_%H_%M_%S_%L")
+      vm_names << name
+      vm.try(:CloneVM_Task,:folder => dc.vmFolder, :name => name, :spec => spec)
+      
+      #render text: "Template not found", status: 404
+      #return
       end
-    end
-    render nothing:true
+    render json: {:vms_launched => vm_names}
   end
 
 	private
