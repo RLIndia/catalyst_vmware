@@ -6,7 +6,7 @@ Rails.application.routes.draw do
    root 'vcenter#index'
    get 'validate_creds' => 'vcenter#validate_creds'
    get 'vms' => 'vcenter#get_vms'
-   get ':vm' => 'vcenter#vm_info'
+   get ':vm/info' => 'vcenter#vm_info'
    get 'templates' => 'vcenter#get_templates'
    get 'hosts' => 'vcenter#get_hosts'
    get 'datastores' => 'vcenter#list_datastores'

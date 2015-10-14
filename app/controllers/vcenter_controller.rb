@@ -216,6 +216,8 @@ class VcenterController < ApplicationController
       return
     end
     req = JSON.parse(request.body.read)
+    p "request params----------------------" 
+    p req
     hosts = find_all_in_folder(dc.hostFolder, RbVmomi::VIM::ComputeResource)
     raise "No ComputeResource found" if hosts.empty?
     rp = nil
