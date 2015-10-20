@@ -228,33 +228,31 @@ class VcenterController < ApplicationController
         end
       end
     end
+    vm_names=[]
+    vm = VcenterHelper.find_vm(dc.vmFolder, params[:template])
     rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(:datastore => VcenterHelper.find_datastore(dc,req["ds"]),
                                                                       :pool => rp,
                                                                       :diskMoveType => :moveChildMostDiskBacking)
     virtual_machine_config_spec = RbVmomi::VIM::VirtualMachineConfigSpec()
-    csm = connect_to_vcenter.serviceContent.customizationSpecManager.GetCustomizationSpec(name: "ubuntu").spec
+    csm = connect_to_vcenter.serviceContent.customizationSpecManager.GetCustomizationSpec(name: req["spec"]).spec
     p csm 
-    custom_nicSettingMap = [] 
-    custom_ip = RbVmomi::VIM.CustomizationFixedIp(:ipAddress => "192.168.102.30")
-    custom_adapter = RbVmomi::VIM.CustomizationIPSettings(:ip => custom_ip)
-    custom_adapter.subnetMask="255.255.255.0"
-    custom_adapter.gateway=["192.168.102.1"]
-    custom_adapter.dnsDomain="RLINDIA.COM"
-    custom_adapter.dnsServerList=["192.168.105.11"]
-    custom_adapter_mapping = RbVmomi::VIM::CustomizationAdapterMapping(:adapter => custom_adapter)
-    custom_nicSettingMap << custom_adapter_mapping
-    csm.nicSettingMap = custom_nicSettingMap
-    spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, :config => virtual_machine_config_spec, :customization => csm, powerOn: true, template: false)
-    p virtual_machine_config_spec
-    vm = VcenterHelper.find_vm(dc.vmFolder, params[:template])
-    vm_names=[]
-      req["no_of_vm"].to_i.times do
-      name = req["vm_name"]+"_"+Time.now.strftime("%F_%H_%M_%S_%L")
+    for ip in req["ipaddress"]
+      custom_nicSettingMap = [] 
+      custom_ip = RbVmomi::VIM.CustomizationFixedIp(:ipAddress => ip)
+      custom_adapter = RbVmomi::VIM.CustomizationIPSettings(:ip => custom_ip)
+      custom_adapter.subnetMask=req["subnet"]
+      custom_adapter.gateway=req["gateway"]
+      custom_adapter.dnsDomain=csm.identity.domain
+      custom_adapter.dnsServerList=csm.globalIPSettings.dnsServerList
+      custom_adapter_mapping = RbVmomi::VIM::CustomizationAdapterMapping(:adapter => custom_adapter)
+      custom_nicSettingMap << custom_adapter_mapping
+      csm.nicSettingMap = custom_nicSettingMap
+      spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, :config => virtual_machine_config_spec, :customization => csm, powerOn: true, template: false)
+      name = "vm"+"_"+Time.now.strftime("%F_%H_%M_%S_%L")
       vm_names << name
       vm.try(:CloneVM_Task,:folder => dc.vmFolder, :name => name, :spec => spec)
-      
-      #render text: "Template not found", status: 404
-      #return
+            #render text: "Template not found", status: 404
+            #return
       end
     render json: {:vms_launched => vm_names}
   end
