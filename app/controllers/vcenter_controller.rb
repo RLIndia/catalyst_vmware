@@ -221,8 +221,6 @@ class VcenterController < ApplicationController
       return
     end
     req = JSON.parse(request.body.read)
-    p "request params----------------------" 
-    p req
     hosts = find_all_in_folder(dc.hostFolder, RbVmomi::VIM::ComputeResource)
     raise "No ComputeResource found" if hosts.empty?
     rp = nil
@@ -239,14 +237,19 @@ class VcenterController < ApplicationController
                                                                       :pool => rp,
                                                                       :diskMoveType => :moveChildMostDiskBacking)
     virtual_machine_config_spec = RbVmomi::VIM::VirtualMachineConfigSpec()
-    csm = connect_to_vcenter.serviceContent.customizationSpecManager.GetCustomizationSpec(name: req["spec"]).spec
-    p csm 
-    for ip in req["ipaddress"]
+    csm = connect_to_vcenter.serviceContent.customizationSpecManager.GetCustomizationSpec(name: "ubuntu").spec
+    file_contents = File.open("ips.csv", "r"){ |file| file.readlines }
+    ip_arr = file_contents.first(req["no_of_vm"].to_i).map(&:strip).inject([]){|ip_arr, str| ip_arr << str.split(",")}
+    for i in ip_arr
+
+      ip=i.first
+      subnet = i[1]
+      gateway = i.last
       custom_nicSettingMap = [] 
       custom_ip = RbVmomi::VIM.CustomizationFixedIp(:ipAddress => ip)
       custom_adapter = RbVmomi::VIM.CustomizationIPSettings(:ip => custom_ip)
-      custom_adapter.subnetMask=req["subnet"]
-      custom_adapter.gateway=req["gateway"]
+      custom_adapter.subnetMask=subnet
+      custom_adapter.gateway=gateway
       custom_adapter.dnsDomain=csm.identity.domain
       custom_adapter.dnsServerList=csm.globalIPSettings.dnsServerList
       custom_adapter_mapping = RbVmomi::VIM::CustomizationAdapterMapping(:adapter => custom_adapter)
@@ -255,10 +258,17 @@ class VcenterController < ApplicationController
       spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, :config => virtual_machine_config_spec, :customization => csm, powerOn: true, template: false)
       name = "vm"+"_"+Time.now.strftime("%F_%H_%M_%S_%L")
       vm_names << name
-      vm.try(:CloneVM_Task,:folder => dc.vmFolder, :name => name, :spec => spec)
-            #render text: "Template not found", status: 404
-            #return
+      begin
+        vm.CloneVM_Task(:folder => dc.vmFolder, :name => name, :spec => spec)
+        rescue NoMethodError
+        render text: "Template not found", status: 404
+        return
       end
+      end
+    new_content = file_contents.shift(req["no_of_vm"].to_i)
+    new_file = File.new("ips.csv", "w+")
+    new_file.puts(file_contents)
+    new_file.close
     render json: {:vms_launched => vm_names}
   end
 
