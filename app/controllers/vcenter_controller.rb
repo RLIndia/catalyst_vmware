@@ -105,8 +105,13 @@ class VcenterController < ApplicationController
       render json: "#{e.message}", status:404
       return
     end
+    begin
     vm = VcenterHelper.find_vm(dc.vmFolder, params[:vm])
     render json: {:name => vm.name, :ip => vm.guest_ip, :OS => vm.guest.props[:guestFullName], :toolsStatus => vm.guest.toolsRunningStatus, :state => vm.summary.runtime.powerState, :cpuUsage => {:used => vm.summary.quickStats.overallCpuUsage,:num => vm.config.hardware.numCPU},:memory => {:avail => vm.config.hardware.memoryMB, :used => vm.summary.quickStats.guestMemoryUsage}, :uptime => vm.summary.quickStats.uptimeSeconds}
+    rescue NoMethodError
+      render text: "VM Not Found"
+      return
+   end  
   end
 
   def get_templates
