@@ -244,7 +244,7 @@ class VcenterController < ApplicationController
 
       ip=i.first
       subnet = i[1]
-      gateway = i.last
+      gateway = [i.last]
       custom_nicSettingMap = [] 
       custom_ip = RbVmomi::VIM.CustomizationFixedIp(:ipAddress => ip)
       custom_adapter = RbVmomi::VIM.CustomizationIPSettings(:ip => custom_ip)
