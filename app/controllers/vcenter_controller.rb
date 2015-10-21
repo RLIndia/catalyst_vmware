@@ -256,7 +256,7 @@ class VcenterController < ApplicationController
       custom_nicSettingMap << custom_adapter_mapping
       csm.nicSettingMap = custom_nicSettingMap
       spec = RbVmomi::VIM.VirtualMachineCloneSpec(location: rspec, :config => virtual_machine_config_spec, :customization => csm, powerOn: true, template: false)
-      name = "vm"+"_"+Time.now.strftime("%F_%H_%M_%S_%L")
+      name = req["vm_name"]+"_"+Time.now.strftime("%F_%H_%M_%S_%L")
       vm_names << name
       begin
         vm.CloneVM_Task(:folder => dc.vmFolder, :name => name, :spec => spec)
