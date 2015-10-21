@@ -267,7 +267,7 @@ class VcenterController < ApplicationController
       end
     new_content = file_contents.shift(req["no_of_vm"].to_i)
     new_file = File.new("ips.csv", "w+")
-    new_file.puts(file_contents)
+    new_file.puts(file_contents.push(new_content))
     new_file.close
     render json: {:vms_launched => vm_names}
   end
